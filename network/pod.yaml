@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sample-pod
+spec:
+  containers:
+  - image: sample_api:1.0
+    name: api-container
+    command: ["python", "app.py"]
+  - image: sample_api:1.0
+    name: curl-container
+    command: ["tail", "-f", "/dev/null"]
