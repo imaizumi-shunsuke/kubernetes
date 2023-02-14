@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sample-daemonset
+spec:
+  selector:
+    matchLabels:
+      name: sample-daemonset
+  template:
+    metadata:
+      labels:
+        name: sample-daemonset
+    spec:
+      containers:
+      - image: sample_api:1.0
+        name: api-container
+        command: ["python", "app.py"]

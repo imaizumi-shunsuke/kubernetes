@@ -21,7 +21,7 @@ podの稼動状態を見る。
 podはコンテナ本体に相当する部分で一つ以上のDockerコンテナを持つ。一つのIPアドレスを持つ。
 
 ```
-$ minikube kubectl -- get pods -A
+$ kubectl get pod
 ```
 
 nodeの稼動状態を見る。
@@ -29,7 +29,7 @@ nodeの稼動状態を見る。
 nodeはアプリを実行するマシンに相当する。一台の物理サーバや仮想マシンと理解すればよい。nodeはpodを一つ以上持つ。
 
 ```
-$ minikube kubectl get nodes
+$ kubectl get nodes
 ```
 
 3つのnodesがREADYとなっていれば良い。
@@ -106,21 +106,21 @@ curl-containerの方はapp.pyの実行ではなく、コンテナを起動させ
 yamlファイルの設定をpodに適用する。
 
 ```
-$ minikube kubectl -- apply -f pod.yaml
+$ kubectl apply -f pod.yaml
 ```
 
-minikube kubectl get podsでsample_podが2/2 RunningになっていればPodsが正常に動いていることを確認できる。
+kubectl get podでsample_podが2/2 RunningになっていればPodsが正常に動いていることを確認できる。
 
 ようやくPod内の通信を確かめられる。
 
-minikube kubectl -- exec -it Pod名 コンテナ名 -- 実行したいコマンド
+kubectl exec -it Pod名 コンテナ名 -- 実行したいコマンド
 
 でコンテナ内でコマンドを実行することができる。どのPodの中のコンテナか指定する必要がある。
 
 例えば、sample-pod内のcurl-container内でcurl localhost:5000を実行すると
 
 ```
-$ minikube kubectl -- exec -it sample-pod curl-container -- curl localhost:5000
+$ kubectl exec -it sample-pod curl-container -- curl localhost:5000
 ```
 
 Hello World!が返ってくる。
@@ -134,5 +134,54 @@ Hello World!が返ってくる。
 最後にPodを削除しておく。
 
 ```
-$ minikube kubectl -- delete -f pod.yaml
+$ kubectl delete -f pod.yaml
 ```
+
+## Pod間通信
+次にPodとPodの間での通信を確認する。
+
+Dockerだけで異なるネットワークにあるコンテナ間通信を行う場合、NAT(ポートフォワーディング）などの設定が必要となるが、KubernetesではNATなしでPod間通信が可能。
+
+簡単に異なるネットワーク間の通信が可能なことを確認しよう。
+
+今回は先ほどの３つのnodeを利用して、それぞれで同じPodを起動する。
+
+nodeに一つずつ同じPodを配置する場合、DaemonSetという設定ができる。（ちなみに先ほどはPodという方法でコンテナやコマンドを別々に指定した。）
+
+daemonset.yamlに設定内容があるので中身はそちらを確認してほしい。
+
+それぞれのnodeでsample_api:1.0のイメージからコンテナを作り、python app.pyを実行している。
+
+```
+$ kubectl apply -f daemonset.yaml
+```
+
+無事実行されれば、以下のコマンドでIPアドレスなどが確認できる。
+
+```
+$ kubectl get pod -o wide
+```
+
+最後にPodから別のPodにアクセスできることを確認する。
+
+例えば、このケースではminikubeで動いているPodからminikube-m02にアクセスできる。ただし、Podの名前は実行環境によって違うので注意。
+
+```
+$ kubectl exec -it sample-daemonset-rbdk9 -- curl 10.244.1.2:5000
+```
+
+Hello world!が帰ってくればok。
+
+## nodeとPodの通信
+最後にnodeで稼動するプロセスでもPodにアクセスできることを確認する。
+
+このケースではminikube-m02のノードにssh接続し、そこからminikube-m03のPodにアクセスする。
+
+```
+$ minikube ssh -n minikube-m02
+docker@minikube-m02:~$ curl 10.244.2.3:5000
+```
+
+こちらでもHello world!が返ってくれば完了。
+
+以上でkubernetesのネットワーク基礎については終了。
